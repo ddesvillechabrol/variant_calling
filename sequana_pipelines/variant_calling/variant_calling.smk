@@ -20,6 +20,7 @@ Run: snakemake -s variant_calling.rules
 import os
 import shutil
 import json
+from pathlib import Path
 
 import pandas as pd
 
@@ -63,39 +64,34 @@ rule all:
         others
 
 
-reference_file  = config["reference_file"]
+REF_FILE  = Path(config["reference_file"])
 annotation_file = config["annotation_file"]
-new_reference = f"reference/{os.path.basename(reference_file)}"
 
 
 # ========================================================= snpeff
 # Add locus in FASTA file for snpEff
-if config["snpeff"]["do"]:
+rule snpeff_add_locus_in_fasta:
+    input:
+        str(REF_FILE),
+        config["annotation_file"]
+    output:
+        f"snpeff_reference/{REF_FILE.name}"
+    log:
+        "common_logs/snpeff_add_locus_in_fasta.log"
+    wrapper:
+        f"{sequana_wrapper_branch}/wrappers/snpeff_add_locus_in_fasta"
 
-    rule snpeff_add_locus_in_fasta:
-        input:
-            config["reference_file"],
-            config["annotation_file"]
-        output:
-            new_reference
-        log:
-            "common_logs/snpeff_add_locus_in_fasta.log"
-        wrapper:
-            f"{sequana_wrapper_branch}/wrappers/snpeff_add_locus_in_fasta"
 
 # Copy the reference index if it exists
-elif not os.path.isfile(reference_file + ".fai"):
-    rule copy:
-        input:
-            src=reference_file
-        output:
-            src=new_reference
-        shell:
-            """
-            cp {input.src} {output.src}
-            """
-else:
-    new_reference = reference_file
+rule copy:
+    input:
+        src=str(REF_FILE)
+    output:
+        src=f"reference/{REF_FILE.name}"
+    shell:
+        """
+        cp {input.src} {output.src}
+        """
 
 
 # ========================================================= BWA
